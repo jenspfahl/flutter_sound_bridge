@@ -1,3 +1,4 @@
+
 group 'de.jepfa.flutter_sound_bridge'
 version '1.0-SNAPSHOT'
 
@@ -26,7 +27,7 @@ apply plugin: 'kotlin-android'
 
 android {
     compileSdkVersion 34
-    namespace = "de.jepfa.bdt"
+    namespace = "de.jepfa.flutter_sound_bridge"
 
 
     compileOptions {
