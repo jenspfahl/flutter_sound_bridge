@@ -28,15 +28,24 @@ class FlutterSoundBridge {
     if (Platform.isAndroid) await _channel.invokeMethod('stopSysSound');
   }
 
-  static setVolume(int volume) async {
-    final args = <String, int>{"volume": volume};
+  static setVolume(int volume, int audioStream) async {
+    final args = <String, int>{"volume": volume, "audioStream": audioStream};
     await _channel.invokeMethod('setVolume', args);
   }
 
 }
 
+class AudioStreams {
+  static const int
+      STREAM_SYSTEM = 1,
+      STREAM_ALARM = 4,
+      STREAM_NOTIFICATION = 5
+  ;
+}
+
 class AndroidSoundIDs {
-  static const int TONE_CDMA_ABBR_ALERT = 97,
+  static const int
+      TONE_CDMA_ABBR_ALERT = 97,
       TONE_CDMA_ABBR_INTERCEPT = 37,
       TONE_CDMA_ABBR_REORDER = 39,
       TONE_CDMA_ALERT_AUTOREDIAL_LITE = 87,

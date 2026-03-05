@@ -15,7 +15,7 @@ class FlutterSoundBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler 
     private var channel: MethodChannel? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-        setVolumeAndReInit(DEFAULT_VOLUME)
+        setVolumeAndReInit(DEFAULT_VOLUME, AudioManager.STREAM_SYSTEM)
         channel = MethodChannel(flutterPluginBinding.getBinaryMessenger(), "flutter_sound_bridge")
         channel?.setMethodCallHandler(this)
     }
@@ -23,8 +23,9 @@ class FlutterSoundBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "setVolume" -> {
-                val volume: Int? = call.argument("volume")
-                setVolumeAndReInit(volume ?: DEFAULT_VOLUME)
+                val volume: Int = call.argument("volume") ?: DEFAULT_VOLUME
+                val audioStream: Int = call.argument("audioStream") ?: AudioManager.STREAM_SYSTEM
+                setVolumeAndReInit(volume, audioStream)
                 result.success(true)
             }
             "playSysSound" -> {
@@ -61,9 +62,11 @@ class FlutterSoundBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler 
         toneGen?.stopTone()
     }
 
-    private fun setVolumeAndReInit(volume: Int) {
+    private fun setVolumeAndReInit(volume: Int, audioStream: Int) {
         toneGen?.release() // release old toneGen
-        toneGen = ToneGenerator(AudioManager.STREAM_SYSTEM, volume)
+        if (volume > 0) {
+            toneGen = ToneGenerator(audioStream, volume)
+        }
     }
 
     private fun release() {
