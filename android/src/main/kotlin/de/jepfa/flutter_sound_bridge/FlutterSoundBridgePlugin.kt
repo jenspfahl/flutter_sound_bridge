@@ -64,6 +64,7 @@ class FlutterSoundBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler 
 
     private fun setVolumeAndReInit(volume: Int, audioStream: Int) {
         toneGen?.release() // release old toneGen
+        toneGen = null
         if (volume > 0) {
             toneGen = ToneGenerator(audioStream, volume)
         }
