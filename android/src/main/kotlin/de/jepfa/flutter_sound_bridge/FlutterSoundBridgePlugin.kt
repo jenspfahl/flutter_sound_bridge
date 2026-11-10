@@ -1,7 +1,11 @@
 package de.jepfa.flutter_sound_bridge
 
+import android.content.Context
 import android.media.AudioManager
 import android.media.ToneGenerator
+import android.os.Build
+import android.os.Vibrator
+import android.os.VibratorManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -16,11 +20,21 @@ class FlutterSoundBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler 
 
     private var toneGen: ToneGenerator? = null
     private var channel: MethodChannel? = null
+    private var vibrator: Vibrator? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         setVolumeAndReInit(DEFAULT_VOLUME, AudioManager.STREAM_SYSTEM)
         channel = MethodChannel(flutterPluginBinding.getBinaryMessenger(), "flutter_sound_bridge")
         channel?.setMethodCallHandler(this)
+
+        vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = flutterPluginBinding.applicationContext.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vibratorManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            flutterPluginBinding.applicationContext.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -52,7 +66,8 @@ class FlutterSoundBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler 
                     result.error("2", "pattern must be set", null)
                     return
                 }
-                playPattern(soundId, pattern)
+                val vibrate: Boolean? = call.argument("vibrate")
+                playPattern(soundId, pattern, vibrate ?: false)
                 result.success(true)
             }
 
@@ -87,18 +102,21 @@ class FlutterSoundBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler 
         }
     }
 
-    private fun playPattern(soundId: Int, pattern: String) {
+    private fun playPattern(soundId: Int, pattern: String, vibrate: Boolean) {
         pattern.forEach {
             when (it) {
                 '|' -> {
+                    if (vibrate) startVibrating(50)
                     playSysSound(soundId, 50)
                     pause(300)
                 }
                 '-' -> {
+                    if (vibrate) startVibrating(400)
                     playSysSound(soundId, 400)
                     pause(400)
                 }
                 '_' -> {
+                    if (vibrate) startVibrating(1000)
                     playSysSound(soundId, 1000)
                     pause(400)
                 }
@@ -157,6 +175,13 @@ class FlutterSoundBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler 
             }
         }
     }
+
+    private fun startVibrating(durationMillis: Long) {
+        if (vibrator?.hasVibrator() == true) {
+            vibrator?.vibrate(durationMillis)
+        }
+    }
+
 
 
 
