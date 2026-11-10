@@ -137,9 +137,12 @@ class FlutterSoundBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler 
     }
 
     private fun release() {
-        toneGen?.stopTone()
-        toneGen?.release()
-        toneGen = null
+        val instance = toneGen
+        if (instance != null) {
+            toneGen = null
+            instance.stopTone()
+            instance.release()
+        }
     }
 
     private fun accurateSleep(durationMillis: Long) {
