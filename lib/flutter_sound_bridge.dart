@@ -15,15 +15,16 @@ class FlutterSoundBridge {
 
   static const MethodChannel _channel = MethodChannel('flutter_sound_bridge');
 
-  static playPattern(int soundId, String pattern) async {
+  static playPattern(int soundId, String pattern, bool vibrate) async {
     var args = HashMap<String, dynamic>();
     args["soundId"] = soundId;
     args["pattern"] = pattern;
+    args["vibrate"] = vibrate;
 
     await _channel.invokeMethod('playPattern', args);
   }
 
-  static playSysSound(int soundId, [Duration? duration]) async {
+  static playSound(int soundId, [Duration? duration]) async {
     var args = HashMap<String, dynamic>();
     args["soundId"] = soundId;
     args["durationMs"] = duration?.inMilliseconds??-1;
@@ -38,7 +39,7 @@ class FlutterSoundBridge {
     await _channel.invokeMethod('pause', args);
   }
 
-  static stopSysSound() async {
+  static stopSoundOrPattern() async {
     if (Platform.isAndroid) await _channel.invokeMethod('stopSysSound');
   }
 

@@ -6,21 +6,32 @@ import android.media.ToneGenerator
 import android.os.Build
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.util.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicInteger
+
 
 /** adapted from FlutterBeepPlugin https://pub.dev/packages/flutter_beep  */
 class FlutterSoundBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
-    private val DEFAULT_VOLUME = 100
+
+    companion object {
+
+        private val playingPattern = AtomicInteger(0)
+        private val stopRequestedForPattern = AtomicInteger(0)
+
+        private const val DEFAULT_VOLUME = 100
+    }
 
     private var toneGen: ToneGenerator? = null
     private var channel: MethodChannel? = null
     private var vibrator: Vibrator? = null
+
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         setVolumeAndReInit(DEFAULT_VOLUME, AudioManager.STREAM_SYSTEM)
@@ -39,7 +50,11 @@ class FlutterSoundBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler 
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         CoroutineScope(Dispatchers.IO).launch {
-            perform(call, result)
+            try {
+                perform(call, result)
+            } catch (e: Exception) {
+                Log.e("FSB", "failed but ignoring: ", e)
+            }
         }
     }
 
@@ -83,6 +98,8 @@ class FlutterSoundBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler 
             }
 
             "stopSysSound" -> {
+                stopRequestedForPattern.set(playingPattern.get())
+                Log.d("FSB", "stop requested at $stopRequestedForPattern")
                 stopSysSound()
                 result.success(true)
             }
@@ -103,8 +120,22 @@ class FlutterSoundBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler 
     }
 
     private fun playPattern(soundId: Int, pattern: String, vibrate: Boolean) {
-        pattern.forEach {
-            when (it) {
+        val curr = playingPattern.incrementAndGet()
+        Log.d("FSB", "play pattern $curr ($pattern)")
+
+        pattern.forEach { char ->
+            if (curr != playingPattern.get()) {
+                Log.d("FSB", "stop playing pattern $curr as a newer one started $playingPattern")
+                return
+            }
+
+            if (curr <= stopRequestedForPattern.get()) {
+                Log.d("FSB", "stop playing pattern $curr as requested with $stopRequestedForPattern")
+                return
+            }
+            Log.d("FSB", "still in pattern $curr (last stop requested at $stopRequestedForPattern)")
+
+            when (char) {
                 '|' -> {
                     if (vibrate) startVibrating(50)
                     playSysSound(soundId, 50)
@@ -122,9 +153,7 @@ class FlutterSoundBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler 
                 }
                 ' ' -> pause(1000)
             }
-
         }
-
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -134,6 +163,8 @@ class FlutterSoundBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler 
 
     private fun playSysSound(soundID: Int, durationMs: Int) {
         toneGen?.startTone(soundID, durationMs)
+        Log.d("FSB", "play sound d=$durationMs")
+
         accurateSleep(durationMs.toLong())
     }
 
@@ -181,8 +212,6 @@ class FlutterSoundBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler 
             vibrator?.vibrate(durationMillis)
         }
     }
-
-
 
 
 }
